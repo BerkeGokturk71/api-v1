@@ -1,0 +1,9 @@
+fastapi
+SQLAlchemy
+pydantic
+logging
+uvicorn
+Werkzeug
+fastapi-jwt-auth
+starlette
+apscheduler
