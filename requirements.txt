@@ -7,4 +7,4 @@ Werkzeug
 fastapi-jwt-auth
 starlette
 apscheduler
-dataclass
+dataclasses
