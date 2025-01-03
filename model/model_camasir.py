@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Time, Boolean, Date
 import enum
 from sqlalchemy.orm import relationship, declarative_base
@@ -8,13 +7,13 @@ class MachineType(enum.Enum):
     NORMAL = "Normal"
     DRYER = "Dryer"
 
-@dataclass
+
 class Role(BaseCamasir):
     __tablename__ = "roles"
     id = Column(Integer,primary_key=True)
     name = Column(String,unique=True)
     students = relationship("Student",back_populates="role")
-@dataclass
+
 class Student(BaseCamasir):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True)
@@ -25,17 +24,6 @@ class Student(BaseCamasir):
     date = Column(Date, index=True)
     role = relationship("Role",back_populates="students")
     loans = relationship("Loan", back_populates="student")
-
-@dataclass
-class Admin(Student):
-    def __init__(self,username,password,role=None):
-        if role is None:
-            role = Role(name="admin")
-        self.username = username
-        self.password = password
-        self.role = role
-    def admin_permission(self):
-        pass
 
 class Machine(BaseCamasir):
     __tablename__ = "machine"
