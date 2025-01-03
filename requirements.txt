@@ -1,6 +1,6 @@
 fastapi
 SQLAlchemy
-pydantic
+pydantic~=1.10.7
 logging
 uvicorn
 Werkzeug
