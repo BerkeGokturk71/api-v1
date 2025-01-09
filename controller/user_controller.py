@@ -35,8 +35,8 @@ async def login(user:StudentLogin,session:Session = Depends(get_db),Authorize:Au
             access_token = Authorize.create_access_token(subject=db_user.username, expires_time=timedelta(days=365*100))
             response = {
                 "status_code":200,
-                "user_token": access_token,
-                "username":user.username
+                "username": access_token,
+                "password":user.username
             }
             return jsonable_encoder(response)
 
