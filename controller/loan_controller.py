@@ -67,7 +67,7 @@ def loan_machine(request: MachineLoanRequest, Authorize: AuthJWT = Depends(), db
     elif ((request.machine_count == 1) and(current_date >= user_loan(student_id=student_id,db=db).next_loan_time)):
         return loan_single_machine(student, request, db)
     else:
-        raise HTTPException(status_code=401,detail="2 den fazla makine veya Alım tarihi dışındasınız")
+        raise HTTPException(status_code=400,detail="2 den fazla makine veya Alım tarihi dışındasınız")
 
 
 def loan_single_machine(student: Student, request: MachineLoanRequest, db: Session):
@@ -81,9 +81,8 @@ def loan_single_machine(student: Student, request: MachineLoanRequest, db: Sessi
         create_loan(student_id=student.id, machine_id=available_machines[0], loan_time=loan_time,loan_date=loan_date, next_loan_time=next_loan_time, machine_type=request.machine_type, db=db)  # Loan kaydını oluştur
         return {
             "message": "Makine başarıyla ödünç alındı.",
-            "student_id": student.id,
+            "student_id": student.username,
             "machine_id": available_machines[0],
-            "loan_date": str(loan_date),
             "next_loan_time": str(next_loan_time)
         }
     else:
@@ -145,7 +144,6 @@ def loan_multiple_machines(student: Student, request: MachineLoanRequest, db: Se
                 "student_id": student.username,
                 "machine_id": machine_id,
                 "next_loan_time": str(next_loan_time),
-                "loan_date":str(loan_date)
             })
 
         return {"loan_results": loan_results}
