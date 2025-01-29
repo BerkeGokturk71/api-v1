@@ -17,5 +17,6 @@ class MachineLoanRequest(BaseModel):
     user_token: str
     machine_type: MachineTypeSchema
     machine_count:int
-    loan_time : str
+    start_time:str
+    use_dryer:bool
 

@@ -61,10 +61,10 @@ def loan_machine(request: MachineLoanRequest, Authorize: AuthJWT = Depends(), db
     current_date =calculate_next_loan_time()[0]
     print("curent_date",current_date)
     # Eğer makine sayısı birden fazla ise
-    if ((request.machine_count > 1and(current_date >= user_loan(student_id=student_id,db=db).next_loan_time)or (user_loan(student_id=student_id,db=db).next_loan_time) ==None)):
+    if ((request.machine_count == 2 and(current_date >= user_loan(student_id=student_id,db=db).next_loan_time))):
         # Birden fazla makine ödünç alınıyor
         return loan_multiple_machines(student, request, db)
-    elif ((request.machine_count < 2) and(current_date >= user_loan(student_id=student_id,db=db).next_loan_time)):
+    elif ((request.machine_count == 1) and(current_date >= user_loan(student_id=student_id,db=db).next_loan_time)):
         return loan_single_machine(student, request, db)
     else:
         raise HTTPException(status_code=401,detail="2 den fazla makine veya Alım tarihi dışındasınız")
@@ -88,19 +88,17 @@ def loan_single_machine(student: Student, request: MachineLoanRequest, db: Sessi
         }
     else:
         available_machines = get_available_machine(request.machine_type, db, request)  # Uygun makineyi getir
-        loan_time, next_loan_time = calculate_next_loan_time()  # Ödünç alma süresi hesapla
-        create_loan(student_id=student.id, machine_id=available_machines[0], loan_time=loan_time,
-                    next_loan_time=next_loan_time, machine_type=request.machine_type, db=db)  # Loan kaydını oluştur
-        request.machine_type = MachineTypeSchema.NORMAL
-        machine = get_available_machine(request.machine_type, db, request)
-        print(machine)
-        for machine_id in machine:
+
+
+        request.machine_type = MachineTypeSchema.DRYER
+        print(available_machines)
+        for machine_id in available_machines:
             print("burası", machine_id)
             # Uygun makineyi getir
             # Ödünç alma süresi hesapla
-            loan_time, next_loan_time = calculate_next_loan_time()
+            loan_date, loan_time, next_loan_time = calculate_next_loan_time()
             # Loan kaydını oluştur
-            create_loan(student_id=student.id, machine_id=machine_id, loan_time=loan_time,
+            create_loan(student_id=student.id, machine_id=machine_id, loan_time=loan_time,loan_date=loan_date,
                         next_loan_time=next_loan_time,
                         machine_type=request.machine_type, db=db)
             # Her bir ödünç alınan makine için sonuçları listeye ekle
@@ -155,19 +153,16 @@ def loan_multiple_machines(student: Student, request: MachineLoanRequest, db: Se
     else:
         loan_results = []
         available_machines = get_available_machine(request.machine_type,db,request)
-        print(available_machines)
-        loan_time, next_loan_time = calculate_next_loan_time()  # Ödünç alma süresi hesapla
-        create_loan(student_id=student.id, machine_id=available_machines[0], loan_time=loan_time, next_loan_time=next_loan_time,
-                    machine_type=request.machine_type, db=db)  # Loan kaydını oluştur
+
         #mark_machine_unavailable(machine, db)  # Makineyi uygun değil olarak işaretle
-        request.machine_type = MachineTypeSchema.NORMAL
-        machine = get_available_machine(request.machine_type, db, request)
-        print(machine)
-        for machine_id in machine:
+        request.machine_type = MachineTypeSchema.DRYER
+
+        print(available_machines)
+        for machine_id in available_machines:
             print("burası",machine_id)
-            loan_time, next_loan_time = calculate_next_loan_time()
+            loan_date, loan_time, next_loan_time = calculate_next_loan_time()
             # Loan kaydını oluştur
-            create_loan(student_id=student.id, machine_id=machine_id, loan_time=loan_time,
+            create_loan(student_id=student.id, machine_id=machine_id, loan_time=loan_time,loan_date=loan_date,
                         next_loan_time=next_loan_time,
                         machine_type=request.machine_type, db=db)
             # Her bir ödünç alınan makine için sonuçları listeye ekle

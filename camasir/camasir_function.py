@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import HTTPException
-from sqlalchemy import and_, extract, func, DateTime, cast, desc
+from sqlalchemy import and_, extract, func, DateTime, cast, desc, text
 from sqlalchemy.orm import Session, joinedload
 from model.model_camasir import Machine, Student, Loan, MachineHour, MachineType, Role
 from schemas.camasir import MachineTypeSchema, MachineLoanRequest
@@ -128,7 +128,7 @@ def current_time_smaller_than_machine_hour():
     now = datetime.now()
     return now.time()
 
-
+"""
 def get_available_machine(machine_type: MachineTypeSchema, db: Session,request: MachineLoanRequest):
     current_time = current_time_smaller_than_machine_hour()
     # Enum dönüşümü: Pydantic schema'dan SQLAlchemy enum'una
@@ -186,5 +186,89 @@ def get_available_machine(machine_type: MachineTypeSchema, db: Session,request: 
                 status_code=404,
                 detail=f"Uygun {machine_type.value} makine bulunamadı."
             )
+"""
+def get_available_machine(machine_type: MachineTypeSchema, db: Session, request: MachineLoanRequest):
+    selected_time_str = request.start_time  # 'HH:MM' formatında string
+    selected_time = datetime.strptime(selected_time_str, "%H:%M").time()
+
+    # Şu anki zamanı 'time' objesi olarak al
+    current_time = datetime.now().time()
+    # Seçilen saat geçmişte mi?
+    if selected_time <= current_time:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Belirtilen saat ({selected_time}) geçmişte olduğu için makine seçilemez."
+        )
+
+    machine_ids = []
+    selected_time_str = selected_time.strftime("%H:%M:%S")
+
+    # 📌 1️⃣ Kullanıcı KURUTMALI (DRYER) hizmet istiyor mu?
+    if request.use_dryer:
+        # Önce DRYER olup olmadığını kontrol et
+        dryer_machine = db.query(MachineHour).join(Machine).filter(
+            and_(
+                Machine.type == MachineType.DRYER,
+                MachineHour.available == True,
+                func.strftime("%H:%M:%S", MachineHour.start_time) == selected_time_str
+            )
+        ).order_by(func.time(MachineHour.start_time)).first()
+
+        if not dryer_machine:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{selected_time} saatinde uygun kurutma makinesi yok, sıra verilemiyor."
+            )
+
+        # 📌 2️⃣ Sadece **1** adet DRYER tahsis et
+        dryer_machine.available = False
+        machine_ids.append(dryer_machine.id)
+
+        # 📌 3️⃣ Sonra NORMAL makineleri tahsis et
+        normal_machines = db.query(MachineHour).join(Machine).filter(
+            and_(
+                Machine.type == MachineType.NORMAL,
+                MachineHour.available == True,
+                func.strftime("%H:%M:%S", MachineHour.start_time) == selected_time_str
+            )
+        ).order_by(func.time(MachineHour.start_time)).all()
+
+        if len(normal_machines) < request.machine_count:
+            raise HTTPException(
+                status_code=404,
+                detail="Yeterli normal makine bulunamadı."
+            )
+
+        for machine_hour in normal_machines[:request.machine_count]:
+            machine_hour.available = False
+            machine_ids.append(machine_hour.id)
+
+        db.commit()
+        print(f"1 Kurutma ve {request.machine_count} Normal makine tahsis edildi: {machine_ids}")
+
+    # 📌 4️⃣ Kullanıcı SADECE NORMAL MAKİNE istiyorsa
+    else:
+        normal_machines = db.query(MachineHour).join(Machine).filter(
+            and_(
+                Machine.type == MachineType.NORMAL,
+                MachineHour.available == True,
+                func.strftime("%H:%M:%S", MachineHour.start_time) == selected_time_str
+            )
+        ).order_by().all()
+        print(len(normal_machines))
+        if len(normal_machines) < request.machine_count:
+            raise HTTPException(
+                status_code=404,
+                detail="Yeterli normal makine bulunamadı."
+            )
+
+        for machine_hour in normal_machines[:request.machine_count]:
+            machine_hour.available = False
+            machine_ids.append(machine_hour.id)
+
+        db.commit()
+        print(f"Normal makineler tahsis edildi: {machine_ids}")
+
+    return machine_ids
 
 
