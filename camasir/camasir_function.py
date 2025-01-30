@@ -53,6 +53,17 @@ def calculate_next_loan_time() -> datetime.time:
 def user_loan(student_id,db:Session)->Loan:
     student_loan = db.query(Loan).filter(Student.username==student_id).order_by(desc(Loan.next_loan_time)).first()
     return student_loan
+#Güncel tarihi verir
+def current_date():
+    today = datetime.today().date()
+    return today
+def user_current_loan(student_id,db:Session)->Loan:
+    student_current_loan = db.query(Loan).filter(and_(Student.username==student_id,Loan.loan_date==current_date())).all()
+    return student_current_loan
+def user_latest_loan(student_id,db:Session)->Loan:
+    student_latest_loan = db.query(Loan).filter(
+        and_(Student.username == student_id, Loan.loan_date <= current_date())).order_by(desc(Loan.next_loan_time)).limit(10).all()
+    return student_latest_loan
 def create_loan(student_id: int, machine_id: int, loan_time: datetime.time, next_loan_time: datetime.time,loan_date:datetime.time, machine_type, db: Session) -> Loan:
     """Yeni bir ödünç kaydı oluştur."""
     print(machine_type)

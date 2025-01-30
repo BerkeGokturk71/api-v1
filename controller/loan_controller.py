@@ -3,12 +3,14 @@ from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
 from sqlalchemy.orm import Session
 from camasir.camasir_function import get_student, get_available_machine, calculate_next_loan_time, create_loan, \
-    user_loan, start_scheduler, scheduler, get_available_machine_all
+    user_loan, start_scheduler, scheduler, get_available_machine_all, user_current_loan, user_latest_loan
 from config.create_db_camasir import get_db
 from model.model_camasir import Student
 from schemas.camasir import MachineLoanRequest, MachineTypeSchema
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+
+from schemas.my_current_loan import LoanSchema
 
 router = APIRouter(
     prefix="/loan",
@@ -36,9 +38,30 @@ def my_next_loan(Authorize: AuthJWT = Depends(),db:Session=Depends(get_db)):
     return {
         "message": "Makine başarıyla ödünç alındı.",
         "student_id": student.id,
+        "machine_id":str(user_loan_info.machine_id),
         "loan_date":str(user_loan_info.loan_date) ,
         "next_loan_time": str(user_loan_info.next_loan_time)
     }
+@router.get("/my_current_loan", response_model=list[LoanSchema])
+def my_current_loan(Authorize:AuthJWT=Depends(),db:Session=Depends(get_db)):
+    try:
+        Authorize.jwt_required()
+
+    except AuthJWTException as e:
+        raise HTTPException(status_code=401, detail="Yetkilendirme hatası")
+    student_id = Authorize.get_jwt_subject()
+    student = user_current_loan(student_id, db)
+    return jsonable_encoder(student)
+@router.get("/my_latest_loan", response_model=list[LoanSchema])
+def my_current_loan(Authorize:AuthJWT=Depends(),db:Session=Depends(get_db)):
+    try:
+        Authorize.jwt_required()
+
+    except AuthJWTException as e:
+        raise HTTPException(status_code=401, detail="Yetkilendirme hatası")
+    student_id = Authorize.get_jwt_subject()
+    student = user_latest_loan(student_id, db)
+    return jsonable_encoder(student)
 
 @router.get("/get_available_machine_hour")
 def available_machine(db:Session=Depends((get_db))):
